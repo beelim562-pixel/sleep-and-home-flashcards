@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Sleep and Home Flashcards</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Comic Sans MS", "Chalkboard SE", "Fredoka", sans-serif;
+      background: #FFF8F0;
+      color: #2C1810;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      touch-action: manipulation;
+    }
+    h1 { font-size: 1.6rem; margin: 8px 0 16px; }
+    .stage {
+      perspective: 1200px;
+      width: min(92vw, calc(72dvh * 16 / 9), 960px);
+      aspect-ratio: 16 / 9;
+      height: auto;
+    }
+    .card {
+      width: 100%; height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform .45s cubic-bezier(.4,.2,.2,1);
+    }
+    .card.flipping { transform: rotateY(90deg); }
+    .face {
+      position: absolute; inset: 0;
+      border-radius: 28px;
+      border: 6px solid #5C3A21;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-shadow: 0 12px 28px rgba(0,0,0,.18);
+    }
+    .word-syl {
+      display: flex;
+      gap: 0;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .syl-word {
+      display: flex;
+      gap: 0;
+      align-items: flex-start;
+    }
+    .syl-word + .syl-word { margin-left: 0.5em; }
+    .syl-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 0;
+    }
+    .word-part {
+      font-size: clamp(2.2rem, 7vw, 3.4rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+    .word-part .init { color: #E53935; }
+    .word-part.s0 { color: #1565C0; }
+    .word-part.s1 { color: #2E7D32; }
+    .word-part.s2 { color: #7B1FA2; }
+    .word-part.s3 { color: #E65100; }
+    .sfx-toggle.mode-on { background: #2A9D8F; color: #fff; border-color: #1B5E54; }
+    .ph-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: nowrap;
+      align-items: flex-end;
+    }
+    .ph-box {
+      width: auto;
+      min-width: 2.7rem;
+      height: 2.7rem;
+      min-height: 2.7rem;
+      padding: 0 6px;
+      border: 4px solid #5C3A21;
+      border-radius: 12px;
+      font-size: 1.85rem;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #FFF8E7;
+      color: #2C1810;
+      line-height: 1;
+    }
+    .ph-split {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      position: relative;
+    }
+    .ph-curve {
+      width: 100%;
+      height: 20px;
+      display: block;
+    }
+    .ph-split-letters {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .syl {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      justify-content: center;
+      min-height: 28px;
+    }
+    .syl span {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #5C3A21;
+    }
+    .syl.emoji span {
+      width: auto; height: auto;
+      background: none;
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+    .pic {
+      font-size: 7rem; line-height: 1; margin-top: 12px;
+      opacity: 0;
+      transform: translateY(80px) scale(0.5);
+      pointer-events: none;
+    }
+    .pic.show {
+      animation: picPop .7s cubic-bezier(.18,.86,.24,1) forwards;
+    }
+    .pic.hide {
+      animation: picHide .45s cubic-bezier(.4,.2,.2,1) forwards;
+    }
+    .pic.sticky {
+      opacity: 1;
+      transform: none;
+      animation: none;
+    }
+    .pic.zh { font-size: 3.2rem; font-weight: 900; letter-spacing: 0.12em; }
+    @keyframes picPop {
+      0% { opacity: 0; transform: translateY(80px) scale(0.5); }
+      70% { opacity: 1; transform: translateY(-8px) scale(1.06); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes picHide {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(80px) scale(0.5); }
+    }
+    .pic img { width: min(46vw, 320px); aspect-ratio: 16 / 9; height: auto; object-fit: cover; border-radius: 16px; border: 4px solid #E8D5C4; }
+    .row { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
+    button {
+      min-height: 56px; min-width: 110px;
+      font-size: 1.2rem; font-weight: 800;
+      border: none; border-radius: 999px;
+      padding: 10px 22px; cursor: pointer;
+      font-family: inherit;
+    }
+    .next-btn { background: #2A9D8F; color: #fff; }
+    .speak-btn {
+      margin-top: 8px;
+      min-width: 52px; min-height: 48px;
+      background: #1565C0; color: #fff;
+      font-size: 1.3rem;
+    }
+    .nav { background: #5C3A21; color: #fff; }
+    .count { margin-top: 10px; font-weight: 700; color: #7A6458; }
+    .credit {
+      margin-top: 14px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #A89080;
+      letter-spacing: 0.02em;
+    }
+    .sfx-bar {
+      width: auto;
+      max-width: min(92vw, 520px);
+      background: #fff;
+      border: 4px solid #5C3A21;
+      border-radius: 18px;
+      padding: 6px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .sfx-bar.open { width: min(92vw, 520px); padding: 8px 10px; }
+    .gear-btn {
+      min-width: 48px; min-height: 48px; width: 48px;
+      font-size: 1.45rem; border-radius: 50%;
+      background: #FFD166; color: #5C3A21; border: 3px solid #5C3A21;
+      padding: 0;
+    }
+    .settings-panel { display: none; width: 100%; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
+    .sfx-bar.open .settings-panel { display: flex; }
+    .sfx-bar .label { font-weight: 800; font-size: 0.95rem; }
+    .sfx-toggle {
+      min-height: 40px; min-width: 88px; font-size: 0.95rem;
+      background: #FFD166; color: #5C3A21; border: 3px solid #5C3A21;
+    }
+    .sfx-row { display: none; gap: 8px; flex-wrap: wrap; justify-content: center; width: 100%; }
+    .sfx-row.open { display: flex; }
+    .sfx-btn {
+      min-height: 40px; min-width: 68px; font-size: 0.9rem;
+      background: #fff; color: #5C3A21; border: 3px solid #E8D5C4;
+    }
+    .sfx-btn.on { background: #FFD166; border-color: #5C3A21; }
+
+    .home {
+      display: flex; gap: 22px; flex-wrap: wrap; justify-content: center;
+      align-items: center; min-height: 60dvh; width: 100%;
+    }
+    .home-circle {
+      width: min(42vw, 220px); height: min(42vw, 220px);
+      border-radius: 50%; border: 8px solid #fff;
+      box-shadow: 0 10px 24px rgba(0,0,0,.18);
+      color: #fff; font-weight: 900; font-size: clamp(1.6rem, 5vw, 2.4rem);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; text-align: center; line-height: 1.15;
+    }
+    .home-what { background: #8E44AD; }
+    .home-where { background: #3498DB; }
+    .home-when { background: #27AE60; }
+    .home-sub { font-size: 0.95rem; font-weight: 700; margin-top: 6px; opacity: .95; }
+    #play-view { display: none; width: 100%; flex-direction: column; align-items: center; }
+    #play-view.show { display: flex; }
+    .back-home {
+      min-height: 44px; margin-bottom: 8px;
+      background: #fff; color: #5C3A21; border: 3px solid #5C3A21;
+      border-radius: 999px; padding: 8px 18px; font-weight: 800; cursor: pointer;
+      font-family: inherit; font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sleep and Home</h1>
+
+  <div id="home-view" class="home">
+    <button type="button" class="home-circle home-what" onclick="openCat('what')">What?<span class="home-sub">do you want to do?</span></button>
+    <button type="button" class="home-circle home-where" onclick="openCat('where')">Where?<span class="home-sub">do you want to do this?</span></button>
+    <button type="button" class="home-circle home-when" onclick="openCat('when')">When?<span class="home-sub">do you want to do this?</span></button>
+  </div>
+  <div id="play-view">
+  <button type="button" class="back-home" onclick="goHome()">← Home</button>
+  <div class="sfx-bar" id="sfx-bar">
+    <button class="gear-btn" type="button" onclick="toggleSettings()" aria-label="Settings">⚙️</button>
+    <div class="settings-panel" id="settings-panel">
+    <button class="sfx-toggle" type="button" onclick="toggleSfxMenu()">Sound</button>
+    <div class="sfx-row" id="sfx-row">
+      <button class="sfx-btn" id="sfx-pop" type="button" onclick="pickSfx('pop')">Pop</button>
+      <button class="sfx-btn" id="sfx-whoosh" type="button" onclick="pickSfx('whoosh')">Whoosh</button>
+      <button class="sfx-btn" id="sfx-ding" type="button" onclick="pickSfx('ding')">Ding</button>
+      <button class="sfx-btn on" id="sfx-boing" type="button" onclick="pickSfx('boing')">Boing</button>
+    </div>
+    <button class="sfx-toggle" type="button" id="read-mode-btn" onclick="toggleReadAloud()">Read aloud</button>
+    <button class="sfx-toggle" type="button" id="pic-mode-btn" onclick="togglePicMode()">Picture mode</button>
+    <button class="sfx-toggle" type="button" id="ph-mode-btn" onclick="togglePhonics()">Phonics mode</button>
+    <button class="sfx-toggle" type="button" id="syl-mode-btn" onclick="toggleSylSplit()">Syllables mode</button>
+    <button class="sfx-toggle" type="button" id="syl-toggle" onclick="toggleSylMenu()">● Syllables</button>
+    <div class="sfx-row" id="syl-row">
+      <button class="sfx-btn on" id="syl-dot" type="button" onclick="pickSyl('dot')">● Dot</button>
+      <button class="sfx-btn" id="syl-clap" type="button" onclick="pickSyl('clap')">👏 Clap</button>
+      <button class="sfx-btn" id="syl-stomp" type="button" onclick="pickSyl('stomp')">👟 Stomp</button>
+      <button class="sfx-btn" id="syl-chop" type="button" onclick="pickSyl('chop')">🤜 Punch</button>
+    </div>
+    <button class="sfx-toggle" type="button" onclick="resetAll()">Reset</button>
+    </div>
+  </div>
+  <div class="stage">
+    <div class="card" id="card"></div>
+  </div>
+  <div class="row">
+    <button class="nav" type="button" onclick="go(-1)">← Prev</button>
+    <button class="next-btn" type="button" onclick="showPic()" aria-label="Picture">🖼️</button>
+    <button class="nav" type="button" onclick="go(1)">Flip →</button>
+  </div>
+  <p class="count" id="count"></p>
+  </div>
+  <p class="credit">Designed by Bernice Lam</p>
+  <script>
+    const CARDS = [
+      { cat: "what", word: "jump", pic: "emoji", emoji: "🤸" },
+      { cat: "what", word: "run", pic: "emoji", emoji: "🏃" },
+      { cat: "what", word: "draw", pic: "emoji", emoji: "🎨" },
+      { cat: "what", word: "play", pic: "emoji", emoji: "🎲" },
+      { cat: "where", word: "on the wall", pic: "emoji", emoji: "🧱" },
+      { cat: "where", word: "on the bed", pic: "emoji", emoji: "🛏️" },
+      { cat: "where", word: "in the living room", pic: "emoji", emoji: "🛋️" },
+      { cat: "where", word: "in the bathroom", pic: "emoji", emoji: "🛁" },
+      { cat: "where", word: "in the study", pic: "emoji", emoji: "📚" },
+      { cat: "when", word: "in the morning", pic: "emoji", emoji: "🌅" },
+      { cat: "when", word: "in the afternoon", pic: "emoji", emoji: "☀️" },
+      { cat: "when", word: "in the evening", pic: "emoji", emoji: "🌇" },
+      { cat: "when", word: "at night", pic: "emoji", emoji: "🌙" }
+    ];
+    let i = 0, picOut = false, busy = false, picMode = false, readAloud = false;
+    let deck = CARDS.slice();
+    const cardEl = document.getElementById("card");
+    function picHtml(c) {
+      if (c.pic === "photo") return `<div class="pic" id="pic"><img alt="" src="${c.src}"></div>`;
+      if (c.pic === "zh") return `<div class="pic zh" id="pic">${c.zh}</div>`;
+      return `<div class="pic" id="pic">${c.emoji}</div>`;
+    }
+    function colorPart(part, isFirst) {
+      if (!isFirst || !part) return part;
+      return `<span class="init">${part[0]}</span>${part.slice(1)}`;
+    }
+    const SYL = { jump: 1, run: 1, draw: 1, play: 1, "on the wall": 3, "on the bed": 3, "in the living room": 5, "in the bathroom": 4, "in the study": 4, "in the morning": 4, "in the afternoon": 5, "in the evening": 4, "at night": 2 };
+    const SYL_PARTS = {
+      jump: ["jump"],
+      run: ["run"],
+      draw: ["draw"],
+      play: ["play"],
+      "on the wall": ["on", "the", "wall"],
+      "on the bed": ["on", "the", "bed"],
+      "in the living room": ["in", "the", "liv", "ing", "room"],
+      "in the bathroom": ["in", "the", "bath", "room"],
+      "in the study": ["in", "the", "stu", "dy"],
+      "in the morning": ["in", "the", "morn", "ing"],
+      "in the afternoon": ["in", "the", "af", "ter", "noon"],
+      "in the evening": ["in", "the", "eve", "ning"],
+      "at night": ["at", "night"]
+    };
+    const PHONICS = {
+      jump: ["j", "u", "m", "p"],
+      run: ["r", "u", "n"],
+      draw: ["d", "r", "aw"],
+      play: ["p", "l", "ay"],
+      "on the wall": ["o", "n", "th", "e", "w", "a", "ll"],
+      "on the bed": ["o", "n", "th", "e", "b", "e", "d"],
+      "in the living room": ["i", "n", "th", "e", "l", "i", "v", "i", "ng", "r", "oo", "m"],
+      "in the bathroom": ["i", "n", "th", "e", "b", "a", "th", "r", "oo", "m"],
+      "in the study": ["i", "n", "th", "e", "s", "t", "u", "d", "y"],
+      "in the morning": ["i", "n", "th", "e", "m", "or", "n", "ing"],
+      "in the afternoon": ["i", "n", "th", "e", "a", "f", "t", "er", "n", "oo", "n"],
+      "in the evening": ["i", "n", "th", "e", "e", "v", "e", "n", "ing"],
+      "at night": ["a", "t", "n", "igh", "t"]
+    };
+    let phonicsMode = false;
+    let sylMode = "dot";
+    let sylSplit = false;
+    const SYL_ICON = { clap: "👏", stomp: "👟", chop: "🤜" };
+    const SYL_LABEL = { dot: "● Syllables", clap: "👏 Syllables", stomp: "👟 Syllables", chop: "🤜 Syllables" };
+    function sylMark() {
+      if (sylMode === "dot") return `<div class="syl"><span></span></div>`;
+      return `<div class="syl emoji"><span>${SYL_ICON[sylMode]}</span></div>`;
+    }
+    function phBox(p) {
+      return `<div class="ph-box">${p}</div>`;
+    }
+    function phSplit(parts) {
+      const letters = parts.map(phBox).join("");
+      return `<div class="ph-split"><svg class="ph-curve" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><path d="M 6 20 Q 50 2 94 20" fill="none" stroke="#C2185B" stroke-width="5" stroke-linecap="round"/></svg><div class="ph-split-letters">${letters}</div></div>`;
+    }
+    function wordWithPhonics(w) {
+      const parts = PHONICS[w];
+      if (!parts) return `<div class="word-part">${colorPart(w, true)}</div>`;
+      const html = parts.map(p => Array.isArray(p) ? phSplit(p) : phBox(p)).join("");
+      return `<div class="ph-row">${html}</div>`;
+    }
+    function wordWithSyl(w) {
+      if (phonicsMode) return wordWithPhonics(w);
+      if (!sylSplit) {
+        return `<div class="word-part">${colorPart(w, true)}</div>`;
+      }
+      const parts = (SYL_PARTS[w] || [w]).map(p => String(p).replace(/^\s+/, ""));
+      const words = String(w).split(/\s+/).filter(Boolean);
+      let pi = 0, idx = 0;
+      const groups = words.map(word => {
+        const chunk = [];
+        let acc = "";
+        while (pi < parts.length && acc.length < word.length) {
+          chunk.push(parts[pi]);
+          acc += parts[pi];
+          pi++;
+        }
+        if (!chunk.length) chunk.push(word);
+        return chunk;
+      });
+      const html = groups.map(chunk => {
+        const cols = chunk.map(p => {
+          const col = `<div class="syl-col"><div class="word-part s${idx}">${p}</div>${sylMark()}</div>`;
+          idx++;
+          return col;
+        }).join("");
+        return `<div class="syl-word">${cols}</div>`;
+      }).join("");
+      return `<div class="word-syl" onclick="playSylMarks()">${html}</div>`;
+    }
+    function britishVoice() {
+      const vs = window.speechSynthesis.getVoices() || [];
+      const uk = vs.filter(v =>
+        /^en-GB/i.test(v.lang) || /UK English|British|Daniel|Kate|Serena/i.test(v.name)
+      );
+      return uk[0] || vs.find(v => /^en-GB/i.test(v.lang)) || null;
+    }
+    function speakWord() {
+      if (!("speechSynthesis" in window)) return;
+      const w = deck[i] && deck[i].word;
+      if (!w) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(w);
+      u.lang = "en-GB";
+      const v = britishVoice();
+      if (v) u.voice = v;
+      u.rate = 0.85;
+      window.speechSynthesis.speak(u);
+    }
+    if (window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.addEventListener("voiceschanged", () => {
+        window.speechSynthesis.getVoices();
+      });
+    }
+    function toggleReadAloud() {
+      readAloud = !readAloud;
+      const b = document.getElementById("read-mode-btn");
+      if (b) {
+        b.classList.toggle("mode-on", readAloud);
+        b.textContent = readAloud ? "Read aloud ON" : "Read aloud";
+      }
+      render();
+      if (readAloud) speakWord();
+    }
+    function togglePhonics() {
+      phonicsMode = !phonicsMode;
+      const b = document.getElementById("ph-mode-btn");
+      if (b) {
+        b.classList.toggle("mode-on", phonicsMode);
+        b.textContent = phonicsMode ? "Phonics ON" : "Phonics mode";
+      }
+      render();
+    }
+    function togglePicMode() {
+      picMode = !picMode;
+      picOut = picMode;
+      const b = document.getElementById("pic-mode-btn");
+      if (b) {
+        b.classList.toggle("mode-on", picMode);
+        b.textContent = picMode ? "Picture ON" : "Picture mode";
+      }
+      render();
+    }
+    function toggleSylSplit() {
+      sylSplit = !sylSplit;
+      const b = document.getElementById("syl-mode-btn");
+      if (b) {
+        b.classList.toggle("mode-on", sylSplit);
+        b.textContent = sylSplit ? "Syllables ON" : "Syllables mode";
+      }
+      render();
+    }
+    function render() {
+      const c = deck[i];
+      cardEl.innerHTML = `<div class="face">${wordWithSyl(c.word)}${readAloud ? `<button type="button" class="speak-btn" onclick="event.stopPropagation(); speakWord()">🔊</button>` : ""}${picHtml(c)}</div>`;
+      document.getElementById("count").textContent = `${i + 1} / ${deck.length}`;
+      if (picMode) {
+        const p = document.getElementById("pic");
+        if (p) p.classList.add("sticky");
+      } else if (picOut) {
+        const p = document.getElementById("pic");
+        if (p) p.classList.add("show");
+      }
+    }
+    let sfxKind = "boing";
+    let audioCtx = null;
+    function getCtx() {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    }
+    function tone(ctx, type, freq, t, dur, vol) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+      return o;
+    }
+    function playSfx(kind) {
+      try {
+        const ctx = getCtx();
+        const t = ctx.currentTime;
+        const k = kind || sfxKind;
+        if (k === "whoosh") {
+          const n = ctx.createBuffer(1, ctx.sampleRate * 0.28, ctx.sampleRate);
+          const d = n.getChannelData(0);
+          for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 1.4);
+          const src = ctx.createBufferSource();
+          src.buffer = n;
+          const f = ctx.createBiquadFilter();
+          f.type = "bandpass";
+          f.frequency.setValueAtTime(400, t);
+          f.frequency.exponentialRampToValueAtTime(2200, t + 0.22);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.35, t);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+          src.connect(f); f.connect(g); g.connect(ctx.destination);
+          src.start(t);
+        } else if (k === "ding") {
+          tone(ctx, "sine", 880, t, 0.22, 0.22);
+          tone(ctx, "sine", 1320, t + 0.08, 0.28, 0.16);
+        } else if (k === "boing") {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "sine";
+          o.frequency.setValueAtTime(180, t);
+          o.frequency.exponentialRampToValueAtTime(520, t + 0.08);
+          o.frequency.exponentialRampToValueAtTime(240, t + 0.28);
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(t); o.stop(t + 0.34);
+        } else {
+          tone(ctx, "triangle", 720, t, 0.18, 0.28);
+        }
+      } catch (e) {}
+    }
+    function toggleSettings() {
+      document.getElementById("sfx-bar").classList.toggle("open");
+      document.getElementById("sfx-row").classList.remove("open");
+      document.getElementById("syl-row").classList.remove("open");
+    }
+    function resetAll() {
+      i = 0;
+      picOut = false;
+      picMode = false;
+      readAloud = false;
+      sylSplit = false;
+      phonicsMode = false;
+      sylMode = "dot";
+      sfxKind = "boing";
+      busy = false;
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      ["pop", "whoosh", "ding", "boing"].forEach(k => {
+        const b = document.getElementById("sfx-" + k);
+        if (b) b.classList.toggle("on", k === "boing");
+      });
+      ["dot", "clap", "stomp", "chop"].forEach(k => {
+        const b = document.getElementById("syl-" + k);
+        if (b) b.classList.toggle("on", k === "dot");
+      });
+      const picBtn = document.getElementById("pic-mode-btn");
+      if (picBtn) { picBtn.classList.remove("mode-on"); picBtn.textContent = "Picture mode"; }
+      const sylBtn = document.getElementById("syl-mode-btn");
+      if (sylBtn) { sylBtn.classList.remove("mode-on"); sylBtn.textContent = "Syllables mode"; }
+      const phBtn = document.getElementById("ph-mode-btn");
+      if (phBtn) { phBtn.classList.remove("mode-on"); phBtn.textContent = "Phonics mode"; }
+      const readBtn = document.getElementById("read-mode-btn");
+      if (readBtn) { readBtn.classList.remove("mode-on"); readBtn.textContent = "Read aloud"; }
+      const sylT = document.getElementById("syl-toggle");
+      if (sylT) sylT.textContent = "● Syllables";
+      document.getElementById("sfx-row").classList.remove("open");
+      document.getElementById("syl-row").classList.remove("open");
+      cardEl.classList.remove("flipping");
+      render();
+    }
+    function toggleSfxMenu() {
+      document.getElementById("syl-row").classList.remove("open");
+      document.getElementById("sfx-row").classList.toggle("open");
+    }
+    function toggleSylMenu() {
+      document.getElementById("sfx-row").classList.remove("open");
+      document.getElementById("syl-row").classList.toggle("open");
+    }
+    function pickSyl(mode) {
+      sylMode = mode;
+      ["dot", "clap", "stomp", "chop"].forEach(k => {
+        const b = document.getElementById("syl-" + k);
+        if (b) b.classList.toggle("on", k === mode);
+      });
+      const t = document.getElementById("syl-toggle");
+      if (t) t.textContent = SYL_LABEL[mode];
+      document.getElementById("syl-row").classList.remove("open");
+      render();
+      playSylMarks();
+    }
+    function playSylBeat(kind) {
+      try {
+        const ctx = getCtx();
+        const t = ctx.currentTime;
+        if (kind === "clap") {
+          const n = ctx.createBuffer(1, ctx.sampleRate * 0.12, ctx.sampleRate);
+          const d = n.getChannelData(0);
+          for (let j = 0; j < d.length; j++) d[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / d.length, 8);
+          const src = ctx.createBufferSource();
+          src.buffer = n;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.4, t);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+          src.connect(g); g.connect(ctx.destination);
+          src.start(t);
+        } else if (kind === "stomp") {
+          tone(ctx, "sine", 90, t, 0.16, 0.35);
+        } else if (kind === "chop") {
+          const n = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
+          const d = n.getChannelData(0);
+          for (let j = 0; j < d.length; j++) d[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / d.length, 3);
+          const src = ctx.createBufferSource();
+          src.buffer = n;
+          const f = ctx.createBiquadFilter();
+          f.type = "highpass";
+          f.frequency.value = 1200;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.3, t);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+          src.connect(f); f.connect(g); g.connect(ctx.destination);
+          src.start(t);
+        } else {
+          tone(ctx, "sine", 440, t, 0.08, 0.12);
+        }
+      } catch (e) {}
+    }
+    function playSylMarks() {
+      const c = deck[i];
+      const n = SYL[c.word] || 1;
+      for (let k = 0; k < n; k++) {
+        setTimeout(() => playSylBeat(sylMode), k * 280);
+      }
+    }
+    function pickSfx(kind) {
+      sfxKind = kind;
+      ["pop", "whoosh", "ding", "boing"].forEach(k => {
+        const b = document.getElementById("sfx-" + k);
+        if (b) b.classList.toggle("on", k === kind);
+      });
+      playSfx(kind);
+      document.getElementById("sfx-row").classList.remove("open");
+    }
+    function showPic() {
+      const p = document.getElementById("pic");
+      if (!p) return;
+      if (picMode) {
+        p.classList.toggle("sticky");
+        return;
+      }
+      if (picOut) {
+        p.classList.remove("show");
+        p.classList.add("hide");
+        picOut = false;
+        return;
+      }
+      p.classList.remove("hide");
+      p.classList.remove("show");
+      void p.offsetWidth;
+      p.classList.add("show");
+      picOut = true;
+      playSfx();
+    }
+
+    function goHome() {
+      document.getElementById("home-view").style.display = "flex";
+      document.getElementById("play-view").classList.remove("show");
+      deck = CARDS.slice();
+      i = 0;
+      picOut = false;
+    }
+    function openCat(cat) {
+      deck = CARDS.filter(c => c.cat === cat);
+      i = 0;
+      picOut = false;
+      document.getElementById("home-view").style.display = "none";
+      document.getElementById("play-view").classList.add("show");
+      render();
+      if (readAloud) speakWord();
+    }
+    function go(d) {
+      if (busy) return;
+      busy = true;
+      cardEl.classList.add("flipping");
+      setTimeout(() => {
+        i = (i + d + deck.length) % deck.length;
+        picOut = picMode;
+        render();
+        cardEl.classList.remove("flipping");
+        busy = false;
+        if (readAloud) speakWord();
+      }, 280);
+    }
+    render();
+  </script>
+</body>
+</html>
