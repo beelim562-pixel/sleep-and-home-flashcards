@@ -34,7 +34,7 @@
     .face {
       position: absolute; inset: 0;
       border-radius: 28px;
-      border: 6px solid #5C3A21;
+      border: 8px solid #5C3A21;
       background: #fff;
       display: flex;
       flex-direction: column;
@@ -43,6 +43,9 @@
       padding: 20px;
       box-shadow: 0 12px 28px rgba(0,0,0,.18);
     }
+    .face.what { border-color: #8E44AD; }
+    .face.where { border-color: #3498DB; }
+    .face.when { border-color: #27AE60; }
     .word-syl {
       display: flex;
       gap: 0;
@@ -247,6 +250,22 @@
       border-radius: 999px; padding: 8px 18px; font-weight: 800; cursor: pointer;
       font-family: inherit; font-size: 1rem;
     }
+    #list-view { display: none; width: min(92vw, 640px); flex-direction: column; align-items: center; }
+    #list-view.show { display: flex; }
+    .word-list { display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: 8px; }
+    .word-row {
+      width: 100%; min-height: 64px;
+      border: 5px solid #5C3A21; border-radius: 18px;
+      background: #fff; font-family: inherit; font-weight: 900;
+      font-size: 1.5rem; color: #2C1810;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; cursor: pointer; text-align: left;
+    }
+    .word-row.what { border-color: #8E44AD; }
+    .word-row.where { border-color: #3498DB; }
+    .word-row.when { border-color: #27AE60; }
+    .word-row .row-pic { font-size: 2.4rem; margin-left: 10px; }
+    .word-row .row-pic img { width: 72px; height: 40px; object-fit: cover; border-radius: 8px; }
   </style>
 </head>
 <body>
@@ -257,8 +276,17 @@
     <button type="button" class="home-circle home-where" onclick="openCat('where')">Where?<span class="home-sub">do you want to do this?</span></button>
     <button type="button" class="home-circle home-when" onclick="openCat('when')">When?<span class="home-sub">do you want to do this?</span></button>
   </div>
+  <div id="list-view">
+    <button type="button" class="back-home" onclick="goHome()">← Home</button>
+    <h2 id="list-title" style="margin:4px 0 8px;"></h2>
+    <div class="row" style="margin-top:0;">
+      <button class="sfx-toggle mode-on" type="button" id="list-flip-btn" onclick="setPlayMode('flipcard')">Flipcard mode</button>
+      <button class="sfx-toggle" type="button" id="list-pic-btn" onclick="setPlayMode('picture')">Picture mode</button>
+    </div>
+    <div class="word-list" id="word-list"></div>
+  </div>
   <div id="play-view">
-  <button type="button" class="back-home" onclick="goHome()">← Home</button>
+  <button type="button" class="back-home" onclick="backToList()">← List</button>
   <div class="sfx-bar" id="sfx-bar">
     <button class="gear-btn" type="button" onclick="toggleSettings()" aria-label="Settings">⚙️</button>
     <div class="settings-panel" id="settings-panel">
@@ -270,7 +298,8 @@
       <button class="sfx-btn on" id="sfx-boing" type="button" onclick="pickSfx('boing')">Boing</button>
     </div>
     <button class="sfx-toggle" type="button" id="read-mode-btn" onclick="toggleReadAloud()">Read aloud</button>
-    <button class="sfx-toggle" type="button" id="pic-mode-btn" onclick="togglePicMode()">Picture mode</button>
+    <button class="sfx-toggle mode-on" type="button" id="flip-mode-btn" onclick="setPlayMode('flipcard')">Flipcard mode</button>
+    <button class="sfx-toggle" type="button" id="pic-mode-btn" onclick="setPlayMode('picture')">Picture mode</button>
     <button class="sfx-toggle" type="button" id="ph-mode-btn" onclick="togglePhonics()">Phonics mode</button>
     <button class="sfx-toggle" type="button" id="syl-mode-btn" onclick="toggleSylSplit()">Syllables mode</button>
     <button class="sfx-toggle" type="button" id="syl-toggle" onclick="toggleSylMenu()">● Syllables</button>
@@ -311,6 +340,8 @@
       { cat: "when", word: "at night", pic: "emoji", emoji: "🌙" }
     ];
     let i = 0, picOut = false, busy = false, picMode = false, readAloud = false;
+    let playMode = "flipcard";
+    let currentCat = "what";
     let deck = CARDS.slice();
     const cardEl = document.getElementById("card");
     function picHtml(c) {
@@ -448,15 +479,27 @@
       }
       render();
     }
-    function togglePicMode() {
-      picMode = !picMode;
+    function setPlayMode(mode) {
+      playMode = mode;
+      picMode = (mode === "picture");
       picOut = picMode;
-      const b = document.getElementById("pic-mode-btn");
-      if (b) {
-        b.classList.toggle("mode-on", picMode);
-        b.textContent = picMode ? "Picture ON" : "Picture mode";
-      }
-      render();
+      const onFlip = mode === "flipcard";
+      ["flip-mode-btn", "list-flip-btn"].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.classList.toggle("mode-on", onFlip);
+      });
+      ["pic-mode-btn", "list-pic-btn"].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) {
+          b.classList.toggle("mode-on", !onFlip);
+          if (id === "pic-mode-btn") b.textContent = !onFlip ? "Picture ON" : "Picture mode";
+        }
+      });
+      renderList();
+      if (document.getElementById("play-view").classList.contains("show")) render();
+    }
+    function togglePicMode() {
+      setPlayMode(playMode === "picture" ? "flipcard" : "picture");
     }
     function toggleSylSplit() {
       sylSplit = !sylSplit;
@@ -550,6 +593,7 @@
       i = 0;
       picOut = false;
       picMode = false;
+      playMode = "flipcard";
       readAloud = false;
       sylSplit = false;
       phonicsMode = false;
@@ -567,6 +611,12 @@
       });
       const picBtn = document.getElementById("pic-mode-btn");
       if (picBtn) { picBtn.classList.remove("mode-on"); picBtn.textContent = "Picture mode"; }
+      const flipBtn = document.getElementById("flip-mode-btn");
+      if (flipBtn) flipBtn.classList.add("mode-on");
+      const lf = document.getElementById("list-flip-btn");
+      if (lf) lf.classList.add("mode-on");
+      const lp = document.getElementById("list-pic-btn");
+      if (lp) lp.classList.remove("mode-on");
       const sylBtn = document.getElementById("syl-mode-btn");
       if (sylBtn) { sylBtn.classList.remove("mode-on"); sylBtn.textContent = "Syllables mode"; }
       const phBtn = document.getElementById("ph-mode-btn");
@@ -676,15 +726,47 @@
     function goHome() {
       document.getElementById("home-view").style.display = "flex";
       document.getElementById("play-view").classList.remove("show");
+      document.getElementById("list-view").classList.remove("show");
       deck = CARDS.slice();
       i = 0;
       picOut = false;
     }
+    function backToList() {
+      document.getElementById("play-view").classList.remove("show");
+      document.getElementById("list-view").classList.add("show");
+      renderList();
+    }
     function openCat(cat) {
+      currentCat = cat;
       deck = CARDS.filter(c => c.cat === cat);
       i = 0;
-      picOut = false;
+      picOut = playMode === "picture";
       document.getElementById("home-view").style.display = "none";
+      document.getElementById("play-view").classList.remove("show");
+      document.getElementById("list-view").classList.add("show");
+      const titles = { what: "What?", where: "Where?", when: "When?" };
+      document.getElementById("list-title").textContent = titles[cat] || cat;
+      renderList();
+    }
+    function renderList() {
+      const box = document.getElementById("word-list");
+      if (!box) return;
+      const showPic = playMode === "picture";
+      box.innerHTML = deck.map((c, idx) => {
+        let pic = "";
+        if (showPic) {
+          if (c.pic === "photo") pic = `<span class="row-pic"><img alt="" src="${c.src}"></span>`;
+          else if (c.pic === "zh") pic = `<span class="row-pic">${c.zh}</span>`;
+          else pic = `<span class="row-pic">${c.emoji || ""}</span>`;
+        }
+        return `<button type="button" class="word-row ${c.cat}" onclick="openCard(${idx})"><span>${c.word}</span>${pic}</button>`;
+      }).join("");
+    }
+    function openCard(idx) {
+      if (playMode === "picture") return;
+      i = idx;
+      picOut = false;
+      document.getElementById("list-view").classList.remove("show");
       document.getElementById("play-view").classList.add("show");
       render();
       if (readAloud) speakWord();
