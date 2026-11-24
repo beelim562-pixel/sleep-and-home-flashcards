@@ -224,9 +224,37 @@
     .sfx-btn.on { background: #FFD166; border-color: #5C3A21; }
 
     .home {
-      display: flex; gap: 22px; flex-wrap: wrap; justify-content: center;
+      display: flex; flex-direction: column; gap: 22px; flex-wrap: wrap; justify-content: center;
       align-items: center; min-height: 60dvh; width: 100%;
     }
+    .home-circles { display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; }
+    .view-all-btn {
+      min-height: 56px; min-width: 220px;
+      background: #5C3A21; color: #fff; border: 4px solid #3D2416;
+      border-radius: 18px; font-family: inherit; font-weight: 900;
+      font-size: 1.25rem; padding: 10px 22px; cursor: pointer;
+    }
+    #all-view { display: none; width: min(96vw, 980px); flex-direction: column; align-items: center; }
+    #all-view.show { display: flex; }
+    .all-table {
+      width: 100%; border-collapse: collapse; table-layout: fixed;
+      font-size: clamp(0.95rem, 2.4vw, 1.25rem); font-weight: 800;
+      background: #fff;
+    }
+    .all-table th, .all-table td {
+      border: 3px solid #333; padding: 10px 8px; vertical-align: top; text-align: left;
+    }
+    .all-table th.what { background: #E8D5F2; color: #2C1810; }
+    .all-table th.where { background: #D4EEFB; color: #2C1810; }
+    .all-table th.when { background: #D5F5E3; color: #2C1810; }
+    .all-table td.what { background: #F6ECFB; }
+    .all-table td.where { background: #EAF6FD; }
+    .all-table td.when { background: #E8F8F0; }
+    .all-table .hi { background: #FFE66D; padding: 0 3px; }
+    .all-cell { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 36px; }
+    .all-cell input { width: 22px; height: 22px; accent-color: #5C3A21; }
+    .all-cell img { width: 56px; height: 32px; object-fit: cover; border-radius: 6px; }
+    .all-cell .em { font-size: 1.6rem; }
     .home-circle {
       width: min(42vw, 220px); height: min(42vw, 220px);
       border-radius: 50%; border: 8px solid #fff;
@@ -272,9 +300,21 @@
   <h1>Sleep and Home</h1>
 
   <div id="home-view" class="home">
+    <div class="home-circles">
     <button type="button" class="home-circle home-what" onclick="openCat('what')">What?<span class="home-sub">do you want to do?</span></button>
     <button type="button" class="home-circle home-where" onclick="openCat('where')">Where?<span class="home-sub">do you want to do this?</span></button>
     <button type="button" class="home-circle home-when" onclick="openCat('when')">When?<span class="home-sub">do you want to do this?</span></button>
+    </div>
+    <button type="button" class="view-all-btn" onclick="openAllWords()">View all words</button>
+  </div>
+  <div id="all-view">
+    <button type="button" class="back-home" onclick="goHome()">← Home</button>
+    <div class="row" style="margin-top:0;">
+      <button class="sfx-toggle" type="button" id="all-pic-btn" onclick="setPlayMode(playMode === 'picture' ? 'flipcard' : 'picture')">Picture mode</button>
+    </div>
+    <div style="width:100%; overflow-x:auto;">
+      <table class="all-table" id="all-table"></table>
+    </div>
   </div>
   <div id="list-view">
     <button type="button" class="back-home" onclick="goHome()">← Home</button>
@@ -488,7 +528,7 @@
         const b = document.getElementById(id);
         if (b) b.classList.toggle("mode-on", onFlip);
       });
-      ["pic-mode-btn", "list-pic-btn"].forEach(id => {
+      ["pic-mode-btn", "list-pic-btn", "all-pic-btn"].forEach(id => {
         const b = document.getElementById(id);
         if (b) {
           b.classList.toggle("mode-on", !onFlip);
@@ -496,6 +536,7 @@
         }
       });
       renderList();
+      renderAllTable();
       if (document.getElementById("play-view").classList.contains("show")) render();
     }
     function togglePicMode() {
@@ -727,9 +768,47 @@
       document.getElementById("home-view").style.display = "flex";
       document.getElementById("play-view").classList.remove("show");
       document.getElementById("list-view").classList.remove("show");
+      const all = document.getElementById("all-view");
+      if (all) all.classList.remove("show");
       deck = CARDS.slice();
       i = 0;
       picOut = false;
+    }
+    function openAllWords() {
+      document.getElementById("home-view").style.display = "none";
+      document.getElementById("play-view").classList.remove("show");
+      document.getElementById("list-view").classList.remove("show");
+      document.getElementById("all-view").classList.add("show");
+      const ap = document.getElementById("all-pic-btn");
+      if (ap) ap.classList.toggle("mode-on", playMode === "picture");
+      renderAllTable();
+    }
+    function cellPic(c) {
+      if (playMode !== "picture" || !c) return "";
+      if (c.pic === "photo") return `<img alt="" src="${c.src}">`;
+      if (c.pic === "zh") return `<span class="em">${c.zh}</span>`;
+      return `<span class="em">${c.emoji || ""}</span>`;
+    }
+    function tableCell(c, cat) {
+      if (!c) return `<td class="${cat}"></td>`;
+      return `<td class="${cat}"><label class="all-cell"><input type="checkbox"> ${c.word} ${cellPic(c)}</label></td>`;
+    }
+    function renderAllTable() {
+      const el = document.getElementById("all-table");
+      if (!el) return;
+      const what = CARDS.filter(c => c.cat === "what");
+      const where = CARDS.filter(c => c.cat === "where");
+      const when = CARDS.filter(c => c.cat === "when");
+      const n = Math.max(what.length, where.length, when.length);
+      let rows = "";
+      for (let r = 0; r < n; r++) {
+        rows += `<tr>${tableCell(what[r], "what")}${tableCell(where[r], "where")}${tableCell(when[r], "when")}</tr>`;
+      }
+      el.innerHTML = `<thead><tr>
+        <th class="what"><span class="hi">What</span> do you want to do?</th>
+        <th class="where"><span class="hi">Where</span> do you want to do this?</th>
+        <th class="when"><span class="hi">When</span> do you want to do this?</th>
+      </tr></thead><tbody>${rows}</tbody>`;
     }
     function backToList() {
       document.getElementById("play-view").classList.remove("show");
